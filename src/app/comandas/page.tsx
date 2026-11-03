@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getSafeOrderTabs } from "@/lib/data";
 import { Header } from "@/components/Header";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
@@ -16,15 +16,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function ComandasPage() {
-  const openTabs = await prisma.orderTab.findMany({
-    include: {
-      customer: true,
-      items: {
-        include: { product: true },
-      },
-    },
-    orderBy: { tabNumber: "asc" },
-  });
+  const openTabs = await getSafeOrderTabs();
 
   // Exemplo de comandas ativas (1 a 20)
   const simulatedTabs = [

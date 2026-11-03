@@ -1,15 +1,11 @@
-import { prisma } from "@/lib/prisma";
+import { getSafeBankAccounts } from "@/lib/data";
 import { Header } from "@/components/Header";
 import { BancosClient } from "./BancosClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function BancosPage() {
-  const bankAccounts = await prisma.bankAccount.findMany({
-    where: { active: true },
-    orderBy: { name: "asc" },
-  });
-
+  const bankAccounts = await getSafeBankAccounts();
   const totalBancos = bankAccounts.reduce((acc, b) => acc + b.currentBalance, 0);
 
   return (

@@ -1,18 +1,12 @@
-import { prisma } from "@/lib/prisma";
+import { getSafeProducts, getSafeCategories } from "@/lib/data";
 import { Header } from "@/components/Header";
 import { LojaClient } from "./LojaClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function LojaPage() {
-  const products = await prisma.product.findMany({
-    include: { category: true },
-    orderBy: { stockQuantity: "asc" },
-  });
-
-  const categories = await prisma.category.findMany({
-    orderBy: { name: "asc" },
-  });
+  const products = await getSafeProducts();
+  const categories = await getSafeCategories();
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto">

@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import { Header } from "@/components/Header";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
@@ -7,67 +6,30 @@ import {
   DollarSign,
   TrendingUp,
   CreditCard,
-  AlertCircle,
-  Clock,
-  CheckCircle2,
   Users,
   Store,
   ArrowUpRight,
-  ArrowDownRight,
-  CloudRain,
   ChevronRight,
+  CheckCircle2,
 } from "lucide-react";
+import {
+  getSafeCourts,
+  getSafeBookings,
+  getSafeBankAccounts,
+  getSafeCustomers,
+} from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  // 1. Quadras da Arena
-  const courts = await prisma.court.findMany({
-    orderBy: { courtNumber: "asc" },
-  });
+  const courts = await getSafeCourts();
+  const todayBookings = await getSafeBookings();
+  const bankAccounts = await getSafeBankAccounts();
+  const customers = await getSafeCustomers();
 
-  // 2. Reservas de hoje
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const todayBookings = await prisma.courtBooking.findMany({
-    where: {
-      date: {
-        gte: today,
-        lt: tomorrow,
-      },
-    },
-    include: {
-      court: true,
-      customer: true,
-    },
-    orderBy: { startTime: "asc" },
-  });
-
-  // 3. Saldo em Contas Bancárias e Recebíveis
-  const bankAccounts = await prisma.bankAccount.findMany({
-    where: { active: true },
-  });
   const totalBancos = bankAccounts.reduce((acc, b) => acc + b.currentBalance, 0);
-
-  // 4. Clientes com Cashback ativo
-  const totalCustomers = await prisma.customer.count();
-  const customersWithCashback = await prisma.customer.findMany({
-    where: { walletBalance: { gt: 0 } },
-    select: { walletBalance: true },
-  });
-  const totalCashbackEmCirculacao = customersWithCashback.reduce((acc, c) => acc + c.walletBalance, 0);
-
-  // 5. Total faturado em reservas hoje
-  const totalReservasHoje = todayBookings.reduce((acc, b) => acc + b.paidAmount, 0);
-
-  // 6. Caixa aberto
-  const activeCash = await prisma.cashRegister.findFirst({
-    where: { status: "ABERTO" },
-    include: { operator: true },
-  });
+  const totalCashbackEmCirculacao = customers.reduce((acc, c) => acc + (c.walletBalance || 0), 0);
+  const totalReservasHoje = todayBookings.reduce((acc, b) => acc + (b.paidAmount || 0), 0);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto">
@@ -118,7 +80,6 @@ export default async function DashboardPage() {
 
         {/* 4 Cards de Métricas Chave */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Vendas e Recebimentos */}
           <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between text-slate-500 mb-2">
               <span className="text-xs font-medium uppercase tracking-wider">Recebimentos de Hoje</span>
@@ -135,7 +96,6 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Card 2: Saldo em Contas e Cartões */}
           <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between text-slate-500 mb-2">
               <span className="text-xs font-medium uppercase tracking-wider">Disponível em Bancos</span>
@@ -151,7 +111,6 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Card 3: Ocupação das 8 Quadras */}
           <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between text-slate-500 mb-2">
               <span className="text-xs font-medium uppercase tracking-wider">Ocupação das 8 Quadras</span>
@@ -167,7 +126,6 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Card 4: Cashback em Circulação */}
           <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between text-slate-500 mb-2">
               <span className="text-xs font-medium uppercase tracking-wider">Fidelização / Cashback</span>
@@ -179,7 +137,7 @@ export default async function DashboardPage() {
               {formatCurrency(totalCashbackEmCirculacao)}
             </div>
             <div className="text-xs text-slate-500 mt-2">
-              {totalCustomers} clientes cadastrados na carteira
+              {customers.length} clientes cadastrados na carteira
             </div>
           </div>
         </div>
@@ -243,9 +201,8 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* 2 Colunas: Reservas do Dia e Contas Bancárias / BPO */}
+        {/* 2 Colunas: Reservas do Dia e Contas Bancárias */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Próximos Jogos & Reservas */}
           <div className="lg:col-span-2 bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-slate-900 text-base">
@@ -257,63 +214,56 @@ export default async function DashboardPage() {
             </div>
 
             <div className="space-y-2.5">
-              {todayBookings.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm">
-                  Nenhuma reserva para hoje ainda.
-                </div>
-              ) : (
-                todayBookings.map((b) => (
-                  <div
-                    key={b.id}
-                    className="flex items-center justify-between p-3.5 rounded-lg border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-10 rounded-lg bg-slate-900 text-arena-400 flex flex-col items-center justify-center font-bold text-xs">
-                        <span>{b.startTime}</span>
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold text-slate-900">
-                          {b.customer?.name || b.guestName || "Cliente Balcão"}
-                        </div>
-                        <div className="text-xs text-slate-500 flex items-center gap-2">
-                          <span className="font-medium text-slate-700">{b.court.name}</span>
-                          <span>•</span>
-                          <span>{b.sportType}</span>
-                          <span>•</span>
-                          <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                              b.bookingType === "RECORRENTE_MENSALISTA"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-emerald-100 text-emerald-800"
-                            }`}
-                          >
-                            {b.bookingType === "RECORRENTE_MENSALISTA" ? "Mensalista" : "Avulsa"}
-                          </span>
-                        </div>
-                      </div>
+              {todayBookings.map((b) => (
+                <div
+                  key={b.id}
+                  className="flex items-center justify-between p-3.5 rounded-lg border border-slate-100 bg-slate-50/70 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-10 rounded-lg bg-slate-900 text-arena-400 flex flex-col items-center justify-center font-bold text-xs">
+                      <span>{b.startTime}</span>
                     </div>
-
-                    <div className="text-right">
-                      <div className="text-sm font-bold text-slate-900">
-                        {formatCurrency(b.totalAmount)}
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900">
+                        {b.customer?.name || "Cliente Balcão"}
                       </div>
-                      <span
-                        className={`text-[10px] font-semibold uppercase ${
-                          b.paymentStatus === "PAGO"
-                            ? "text-emerald-600"
-                            : "text-amber-600"
-                        }`}
-                      >
-                        {b.paymentStatus}
-                      </span>
+                      <div className="text-xs text-slate-500 flex items-center gap-2">
+                        <span className="font-medium text-slate-700">{b.court.name}</span>
+                        <span>•</span>
+                        <span>{b.sportType}</span>
+                        <span>•</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                            b.bookingType === "RECORRENTE_MENSALISTA"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-emerald-100 text-emerald-800"
+                          }`}
+                        >
+                          {b.bookingType === "RECORRENTE_MENSALISTA" ? "Mensalista" : "Avulsa"}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                ))
-              )}
+
+                  <div className="text-right">
+                    <div className="text-sm font-bold text-slate-900">
+                      {formatCurrency(b.totalAmount)}
+                    </div>
+                    <span
+                      className={`text-[10px] font-semibold uppercase ${
+                        b.paymentStatus === "PAGO"
+                          ? "text-emerald-600"
+                          : "text-amber-600"
+                      }`}
+                    >
+                      {b.paymentStatus}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Saldo Bancário & Alinhamento BPO */}
           <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -358,4 +308,3 @@ export default async function DashboardPage() {
     </div>
   );
 }
-

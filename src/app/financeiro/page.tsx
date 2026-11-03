@@ -1,18 +1,12 @@
-import { prisma } from "@/lib/prisma";
+import { getSafeCostCenters, getSafeBankAccounts } from "@/lib/data";
 import { Header } from "@/components/Header";
 import { FinanceiroClient } from "./FinanceiroClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function FinanceiroPage() {
-  const costCenters = await prisma.costCenter.findMany({
-    orderBy: { code: "asc" },
-  });
-
-  const bankAccounts = await prisma.bankAccount.findMany({
-    where: { active: true },
-  });
-
+  const costCenters = await getSafeCostCenters();
+  const bankAccounts = await getSafeBankAccounts();
   const totalBancos = bankAccounts.reduce((acc, b) => acc + b.currentBalance, 0);
 
   return (

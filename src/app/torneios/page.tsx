@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import { Header } from "@/components/Header";
 import { TorneiosClient } from "./TorneiosClient";
 
