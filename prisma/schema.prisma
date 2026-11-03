@@ -1,0 +1,439 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// -------------------------------------------------------------
+// USUÁRIOS & PERMISSÕES (RBAC)
+// -------------------------------------------------------------
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  role          String    // ADMIN, GERENTE, CAIXA, PROFESSOR, BPO
+  phone         String?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relações
+  classesTaught ClassGroup[]
+  commissions   Commission[]
+  cashRegisters CashRegister[]
+}
+
+// -------------------------------------------------------------
+// CLIENTES & CARTEIRA DE CASHBACK (CRM UNIFICADO)
+// -------------------------------------------------------------
+model Customer {
+  id                  String    @id @default(cuid())
+  name                String
+  email               String?
+  phone               String
+  cpf                 String?   @unique
+  birthDate           DateTime?
+  address             String?
+  walletBalance       Float     @default(0.0) // Saldo de cashback em R$
+  legalGuardianName   String?
+  legalGuardianCpf    String?
+  legalGuardianPhone  String?
+  status              String    @default("ATIVO") // ATIVO, INADIMPLENTE, BLOQUEADO
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relações
+  courtBookings       CourtBooking[]
+  classEnrollments    ClassEnrollment[]
+  replacementCredits  ReplacementCredit[]
+  contracts           Contract[]
+  orderTabs           OrderTab[]
+  financialTransactions FinancialTransaction[]
+}
+
+// -------------------------------------------------------------
+// QUADRAS & LOCAÇÕES (8 QUADRAS DA ARENA)
+// -------------------------------------------------------------
+model Court {
+  id            String    @id @default(cuid())
+  courtNumber   Int       @unique // 1 a 8
+  name          String    // Ex: "Quadra 1 - Central"
+  surface       String    @default("Areia")
+  covered       Boolean   @default(false)
+  hasLighting   Boolean   @default(true)
+  sportsSupported String  @default("Beach Tennis, Vôlei de Praia, Futevôlei")
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relações
+  bookings      CourtBooking[]
+  classGroups   ClassGroup[]
+  pricingRules  CourtPricingRule[]
+}
+
+model CourtPricingRule {
+  id            String    @id @default(cuid())
+  courtId       String
+  court         Court     @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  dayOfWeek     Int       // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
+  startTime     String    // "06:00"
+  endTime       String    // "18:00"
+  isPeak        Boolean   @default(false)
+  pricePerHour  Float
+  createdAt     DateTime  @default(now())
+}
+
+model CourtBooking {
+  id              String    @id @default(cuid())
+  courtId         String
+  court           Court     @relation(fields: [courtId], references: [id])
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  guestName       String?   // Para agendamentos rápidos de balcão
+  guestPhone      String?
+  date            DateTime
+  startTime       String    // "08:00"
+  endTime         String    // "09:00"
+  sportType       String    @default("Beach Tennis")
+  bookingType     String    @default("AVULSA") // AVULSA, RECORRENTE_MENSALISTA, AULA, BLOQUEIO_MANUTENCAO, EVENTO_TORNEIO
+  status          String    @default("CONFIRMADA") // CONFIRMADA, PENDENTE_SINAL, CANCELADA, CONCLUIDA, CHUVA_REMARCAR
+  totalAmount     Float     @default(0.0)
+  depositAmount   Float     @default(0.0)
+  paidAmount      Float     @default(0.0)
+  paymentStatus   String    @default("PENDENTE") // PENDENTE, PAGO_PARCIAL, PAGO, CANCELADO
+  recurrenceRule  String?   // JSON com detalhes da recorrência para mensalistas
+  rainCreditHours Float?    // Crédito de horas gerado em caso de cancelamento por chuva
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relações
+  financialTransactions FinancialTransaction[]
+}
+
+// -------------------------------------------------------------
+// AULAS, TURMAS & MENSALIDADES (SUBSTITUIÇÃO DO AGIL)
+// -------------------------------------------------------------
+model ClassGroup {
+  id            String    @id @default(cuid())
+  name          String    // Ex: "Beach Tennis Intermediário Noite"
+  sportType     String    // Beach Tennis, Futevôlei, Vôlei de Praia
+  level         String    // Iniciante, Intermediário, Avançado
+  professorId   String
+  professor     User      @relation(fields: [professorId], references: [id])
+  courtId       String
+  court         Court     @relation(fields: [courtId], references: [id])
+  dayOfWeek     Int       // 0 a 6
+  startTime     String    // "19:00"
+  endTime       String    // "20:00"
+  maxStudents   Int       @default(6)
+  monthlyPrice  Float     @default(0.0)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relações
+  enrollments   ClassEnrollment[]
+  attendances   ClassAttendance[]
+}
+
+model ClassEnrollment {
+  id                String    @id @default(cuid())
+  classGroupId      String
+  classGroup        ClassGroup @relation(fields: [classGroupId], references: [id])
+  customerId        String
+  customer          Customer  @relation(fields: [customerId], references: [id])
+  planType          String    @default("MENSAL") // MENSAL, TRIMESTRAL, SEMESTRAL, ANUAL
+  monthlyFee        Float
+  status            String    @default("ATIVO") // ATIVO, TRANCADO, CANCELADO, EXPERIMENTAL
+  startDate         DateTime
+  endDate           DateTime?
+  contractId        String?
+  contract          Contract? @relation(fields: [contractId], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relações
+  attendances       ClassAttendance[]
+  replacementCredits ReplacementCredit[]
+}
+
+model ClassAttendance {
+  id                String    @id @default(cuid())
+  classEnrollmentId String
+  classEnrollment   ClassEnrollment @relation(fields: [classEnrollmentId], references: [id])
+  classGroupId      String
+  classGroup        ClassGroup @relation(fields: [classGroupId], references: [id])
+  date              DateTime
+  status            String    @default("PRESENTE") // PRESENTE, FALTA_SEM_AVISO, FALTA_COM_AVISO_REPOSICAO, REPOSICAO_REALIZADA
+  noticeGivenAt     DateTime? // Horário em que o aluno avisou a falta (se >= 4h antes gera crédito)
+  notes             String?
+  createdAt         DateTime  @default(now())
+}
+
+model ReplacementCredit {
+  id                String    @id @default(cuid())
+  customerId        String
+  customer          Customer  @relation(fields: [customerId], references: [id])
+  enrollmentId      String
+  enrollment        ClassEnrollment @relation(fields: [enrollmentId], references: [id])
+  generatedAt       DateTime  @default(now())
+  expiresAt         DateTime  // Validade de até 60 dias
+  usedAt            DateTime?
+  status            String    @default("DISPONIVEL") // DISPONIVEL, UTILIZADO, EXPIRADO
+}
+
+// -------------------------------------------------------------
+// CONTRATOS & COMISSÕES
+// -------------------------------------------------------------
+model Contract {
+  id                  String    @id @default(cuid())
+  code                String    @unique // Ex: "CTR-2026-0001"
+  customerId          String
+  customer            Customer  @relation(fields: [customerId], references: [id])
+  contractType        String    // AULA_MENSALIDADE, LOCACAO_MENSALISTA, EVENTO, PATROCINIO
+  title               String
+  status              String    @default("RASCUNHO") // RASCUNHO, AGUARDANDO_ASSINATURA, ATIVO, ENCERRADO, CANCELADO
+  startDate           DateTime
+  endDate             DateTime?
+  totalValue          Float
+  installmentValue    Float
+  installmentsCount   Int       @default(1)
+  commissionPerInstallment Float @default(0.0) // Valor fixo por parcela paga
+  commissionUserId    String?
+  pdfUrl              String?
+  signedPdfUrl        String?
+  digitalSignatureId  String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relações
+  enrollments         ClassEnrollment[]
+  commissions         Commission[]
+  financialTransactions FinancialTransaction[]
+}
+
+model Commission {
+  id                String    @id @default(cuid())
+  contractId        String
+  contract          Contract  @relation(fields: [contractId], references: [id])
+  userId            String    // Professor ou consultor que recebe a comissão
+  user              User      @relation(fields: [userId], references: [id])
+  installmentNumber Int
+  amount            Float
+  status            String    @default("PREVISTA") // PREVISTA, LIBERADA, PAGA, CANCELADA_ESTORNO
+  dueDate           DateTime
+  releasedAt        DateTime?
+  paidAt            DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+// -------------------------------------------------------------
+// PDV, CAIXAS & COMANDAS (BAR & RESTAURANTE)
+// -------------------------------------------------------------
+model CashRegister {
+  id                String    @id @default(cuid())
+  registerNumber    Int       @default(1) // 1 a 3 (1 nos dias normais, até 3 em torneios)
+  operatorUserId    String
+  operator          User      @relation(fields: [operatorUserId], references: [id])
+  openedAt          DateTime  @default(now())
+  closedAt          DateTime?
+  initialBalance    Float     @default(0.0) // Suprimento inicial
+  closingBalance    Float?    // Contagem física
+  calculatedBalance Float     @default(0.0) // Calculado pelo sistema
+  difference        Float?    // Sobra ou falta
+  status            String    @default("ABERTO") // ABERTO, FECHADO
+  notes             String?
+
+  // Relações
+  movements         CashMovement[]
+  transactions      FinancialTransaction[]
+}
+
+model CashMovement {
+  id              String        @id @default(cuid())
+  cashRegisterId  String
+  cashRegister    CashRegister  @relation(fields: [cashRegisterId], references: [id])
+  type            String        // SUPRIMENTO, SANGRIA
+  amount          Float
+  reason          String
+  createdAt       DateTime      @default(now())
+}
+
+model OrderTab {
+  id              String        @id @default(cuid())
+  tabNumber       Int           // Número da comanda física / cartão
+  customerId      String?
+  customer        Customer?     @relation(fields: [customerId], references: [id])
+  customerName    String?       // Nome avulso se não tiver cadastro completo
+  status          String        @default("ABERTA") // ABERTA, EM_PAGAMENTO, FECHADA, CANCELADA
+  subtotal        Float         @default(0.0)
+  discount        Float         @default(0.0)
+  totalAmount     Float         @default(0.0)
+  paidAmount      Float         @default(0.0)
+  openedAt        DateTime      @default(now())
+  closedAt        DateTime?
+  notes           String?
+
+  // Relações
+  items           OrderItem[]
+  financialTransactions FinancialTransaction[]
+}
+
+model OrderItem {
+  id              String        @id @default(cuid())
+  orderTabId      String
+  orderTab        OrderTab      @relation(fields: [orderTabId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+  quantity        Int           @default(1)
+  unitPrice       Float
+  totalPrice      Float
+  kitchenStatus   String        @default("PRONTO") // PENDENTE, EM_PREPARO, PRONTO, ENTREGUE
+  notes           String?
+  createdAt       DateTime      @default(now())
+}
+
+// -------------------------------------------------------------
+// PRODUTOS, LOJA & ESTOQUE
+// -------------------------------------------------------------
+model Category {
+  id              String        @id @default(cuid())
+  name            String        // "Bebidas", "Porções", "Vestuário", "Equipamentos"
+  type            String        // BAR, LOJA, INSUMO
+  products        Product[]
+}
+
+model Product {
+  id              String        @id @default(cuid())
+  name            String
+  code            String?       @unique // Código de barras ou SKU
+  categoryId      String
+  category        Category      @relation(fields: [categoryId], references: [id])
+  unitPrice       Float         // Preço de venda no PDV
+  costPrice       Float         @default(0.0)
+  stockQuantity   Int           @default(0)
+  minStock        Int           @default(5)
+  size            String?       // P, M, G, GG para loja
+  color           String?
+  cashbackPct     Float         @default(0.0) // Cashback específico deste produto
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relações
+  orderItems      OrderItem[]
+  stockMovements  StockMovement[]
+}
+
+model StockMovement {
+  id              String        @id @default(cuid())
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+  type            String        // ENTRADA_COMPRA, SAIDA_PDV, AJUSTE_INVENTARIO, PERDA_AVARIA, CONSUMO_INTERNO
+  quantity        Int           // Positivo para entrada, negativo para saída
+  unitCost        Float?
+  reason          String?
+  createdAt       DateTime      @default(now())
+}
+
+// -------------------------------------------------------------
+// EVENTOS & TORNEIOS
+// -------------------------------------------------------------
+model EventTournament {
+  id              String        @id @default(cuid())
+  name            String        // "1º Open de Beach Tennis Arena VIVA"
+  type            String        // TORNEIO, CLINICA, EVENTO_CORPORATIVO, ANIVERSARIO
+  startDate       DateTime
+  endDate         DateTime
+  costCenterId    String?
+  costCenter      CostCenter?   @relation(fields: [costCenterId], references: [id])
+  estimatedBudget Float         @default(0.0)
+  actualRevenue   Float         @default(0.0)
+  actualCost      Float         @default(0.0)
+  status          String        @default("PLANEJAMENTO") // PLANEJAMENTO, CONFIRMADO, EM_ANDAMENTO, FINALIZADO
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relações
+  financialTransactions FinancialTransaction[]
+}
+
+// -------------------------------------------------------------
+// MÓDULO FINANCEIRO (SUBSTITUIÇÃO DO TRIO & INTEGRAÇÃO BPO)
+// -------------------------------------------------------------
+model CostCenter {
+  id              String        @id @default(cuid())
+  code            String        @unique // 01, 02, etc.
+  name            String        // "Quadras", "Aulas", "Bar/Restaurante", "Loja", "Eventos", "Administrativo"
+  createdAt       DateTime      @default(now())
+
+  // Relações
+  transactions    FinancialTransaction[]
+  events          EventTournament[]
+}
+
+model ChartOfAccount {
+  id              String        @id @default(cuid())
+  code            String        @unique // 1.1.01, 2.1.05...
+  name            String        // "Receita com Locações", "Custo com Fornecedores Bebidas", etc.
+  type            String        // RECEITA, DESPESA
+  createdAt       DateTime      @default(now())
+
+  // Relações
+  transactions    FinancialTransaction[]
+}
+
+model BankAccount {
+  id              String        @id @default(cuid())
+  name            String        // "Banco C6", "Mercado Pago", "Nubank", "Caixa Físico", "TON Recebíveis"
+  accountNumber   String?
+  agency          String?
+  initialBalance  Float         @default(0.0)
+  currentBalance  Float         @default(0.0)
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relações
+  transactions    FinancialTransaction[]
+}
+
+model FinancialTransaction {
+  id                String          @id @default(cuid())
+  type              String          // RECEITA, DESPESA, TRANSFERENCIA
+  description       String
+  amount            Float
+  dueDate           DateTime
+  paymentDate       DateTime?
+  status            String          @default("PENDENTE") // PENDENTE, PAGO, RECEBIDO, CANCELADO
+  paymentMethod     String?         // PIX, CARTAO_CREDITO, CARTAO_DEBITO, DINHEIRO, WALLET_CASHBACK, BOLETO
+  customerId        String?
+  customer          Customer?       @relation(fields: [customerId], references: [id])
+  costCenterId      String?
+  costCenter        CostCenter?     @relation(fields: [costCenterId], references: [id])
+  chartOfAccountId  String?
+  chartOfAccount    ChartOfAccount? @relation(fields: [chartOfAccountId], references: [id])
+  bankAccountId     String?
+  bankAccount       BankAccount?    @relation(fields: [bankAccountId], references: [id])
+  cashRegisterId    String?
+  cashRegister      CashRegister?   @relation(fields: [cashRegisterId], references: [id])
+  orderTabId        String?
+  orderTab          OrderTab?       @relation(fields: [orderTabId], references: [id])
+  courtBookingId    String?
+  courtBooking      CourtBooking?   @relation(fields: [courtBookingId], references: [id])
+  contractId        String?
+  contract          Contract?       @relation(fields: [contractId], references: [id])
+  eventTournamentId String?
+  eventTournament   EventTournament? @relation(fields: [eventTournamentId], references: [id])
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
