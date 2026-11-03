@@ -1,6 +1,6 @@
 import { Header } from "@/components/Header";
 import { QuadrasClient } from "./QuadrasClient";
-import { getSafeCourts, getSafeBookings, getSafeCustomers } from "@/lib/data";
+import { getSafeCourts, getSafeBookings, getSafeCustomers, getSafeProfessors } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
@@ -8,12 +8,13 @@ export default async function QuadrasPage() {
   const courts = await getSafeCourts();
   const bookings = await getSafeBookings();
   const customers = await getSafeCustomers();
+  const professors = await getSafeProfessors();
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto">
       <Header
         title="Agenda e Locação das 8 Quadras"
-        subtitle="Grade de ocupação em tempo real, reservas avulsas e mensalistas"
+        subtitle="Grade de ocupação em tempo real, reservas avulsas, mensalistas e turmas de treino"
       />
 
       <div className="p-6 space-y-6 max-w-7xl mx-auto w-full">
@@ -21,6 +22,7 @@ export default async function QuadrasPage() {
           courts={courts}
           initialBookings={bookings as any}
           customers={customers}
+          professors={professors}
         />
       </div>
     </div>

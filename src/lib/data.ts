@@ -242,6 +242,23 @@ export const DEFAULT_BOOKINGS = [
     customer: { name: "Camila Fernandes" },
     court: { id: "c5", courtNumber: 5, name: "Quadra 5 - Coberta A", covered: true, surface: "Areia", hasLighting: true },
   },
+  {
+    id: "bk-4",
+    courtId: "c3",
+    startTime: "08:00",
+    endTime: "09:00",
+    sportType: "Beach Tennis",
+    bookingType: "AULA",
+    status: "CONFIRMADA",
+    totalAmount: 240.0,
+    paidAmount: 240.0,
+    paymentStatus: "PAGO",
+    customer: { name: "Turma Beach Intermediário Manhã" },
+    guestName: "Turma Beach Intermediário",
+    professorName: "Professor Lucas Beach",
+    students: ["Rodrigo Almeida", "Camila Fernandes", "Lucas Silveira", "Beatriz Lima"],
+    court: { id: "c3", courtNumber: 3, name: "Quadra 3 - Sol", covered: false, surface: "Areia", hasLighting: true },
+  },
 ];
 
 export const DEFAULT_CASH_REGISTERS = [
