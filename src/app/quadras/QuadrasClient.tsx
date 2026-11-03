@@ -512,3 +512,4 @@ function getNextSlot(slot: string): string {
   const nextH = parseInt(h) + 1;
   return `${nextH < 10 ? "0" + nextH : nextH}:00`;
 }
+

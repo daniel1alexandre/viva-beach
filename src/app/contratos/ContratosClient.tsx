@@ -323,3 +323,4 @@ export function ContratosClient({ initialContracts }: { initialContracts: Contra
     </div>
   );
 }
+

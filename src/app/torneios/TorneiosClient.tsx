@@ -357,3 +357,4 @@ export function TorneiosClient({ initialEvents }: { initialEvents: TournamentEve
     </div>
   );
 }
+

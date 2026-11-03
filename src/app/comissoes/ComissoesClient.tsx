@@ -239,3 +239,4 @@ export function ComissoesClient({ initialCommissions }: { initialCommissions: Co
     </div>
   );
 }
+
