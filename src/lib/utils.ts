@@ -24,3 +24,4 @@ export function formatDateTime(date: Date | string): string {
     timeStyle: "short",
   }).format(d);
 }
+

@@ -437,3 +437,4 @@ model FinancialTransaction {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 }
+

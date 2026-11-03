@@ -74,3 +74,4 @@ ERP completo e integrado desenvolvido para a **Arena VIVA by Baumann** (8 quadra
 
 ## 📄 Documentação Completa do Escopo
 Consulte o documento em [`docs/escopo_erp_viva.md`](./docs/escopo_erp_viva.md) para detalhes de todas as regras de negócio homologadas.
+

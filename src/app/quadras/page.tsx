@@ -70,15 +70,15 @@ export default async function QuadrasPage() {
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
+              type="button"
               className="bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
-              onClick={() => {}}
             >
               <CloudRain className="w-4 h-4 text-amber-600" />
               <span>Acionar Protocolo Chuva</span>
             </button>
             <button
+              type="button"
               className="bg-arena-600 hover:bg-arena-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm shadow-arena-600/30"
-              onClick={() => {}}
             >
               <Plus className="w-4 h-4" />
               <span>Nova Reserva</span>
@@ -192,3 +192,4 @@ export default async function QuadrasPage() {
     </div>
   );
 }
+

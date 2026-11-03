@@ -56,3 +56,4 @@ export function Header({ title = "Painel Geral", subtitle = "Visão executiva em
     </header>
   );
 }
+

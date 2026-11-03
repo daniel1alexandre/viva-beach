@@ -58,15 +58,15 @@ export default async function FinanceiroPage() {
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200"
-              onClick={() => {}}
             >
               <Download className="w-3.5 h-3.5" />
               <span>Exportar para BPO (Conta Azul)</span>
             </button>
             <button
+              type="button"
               className="bg-arena-600 hover:bg-arena-500 text-white px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
-              onClick={() => {}}
             >
               <DollarSign className="w-3.5 h-3.5" />
               <span>Novo Lançamento</span>
